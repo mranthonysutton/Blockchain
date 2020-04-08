@@ -165,7 +165,8 @@ def last_block():
     # grabs the last chain that was found
     last_chain_block = blockchain.chain[-1:]
 
-    # checks if the chain is valid and returns a response, else returns an error
+    # checks if the chain is valid and returns a response
+    # else returns an error
     if last_chain_block is None:
         response = {
             "error": "No chain was found..."
