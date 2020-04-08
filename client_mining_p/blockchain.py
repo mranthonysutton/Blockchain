@@ -118,7 +118,7 @@ class Blockchain(object):
         """
         guess = f"{block_string}{proof}".encode()
         guess_hash = hashlib.sha256(guess).hexdigest()
-        return guess_hash[:6] == "000000"
+        return guess_hash[:4] == "0000"
 
 
 # Instantiate our Node
@@ -163,19 +163,9 @@ def full_chain():
 @app.route("/last")
 def last_block():
     # grabs the last chain that was found
-    last_chain_block = blockchain.chain[-1:]
+    response = blockchain.last_block
 
-    # checks if the chain is valid and returns a response
-    # else returns an error
-    if last_chain_block is None:
-        response = {
-            "error": "No chain was found..."
-        }
-    else:
-        response = {
-            "chain": blockchain.chain[-1:]
-        }
-
+    # returns a response in the JSON format
     return jsonify(response), 200
 
 
