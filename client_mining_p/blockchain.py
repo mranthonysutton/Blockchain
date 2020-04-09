@@ -90,24 +90,10 @@ class Blockchain(object):
     def last_block(self):
         return self.chain[-1]
 
-    def proof_of_work(self):
-        """
-        Simple Proof of Work Algorithm
-        Stringify the block and look for a proof.
-        Loop through possibilities, checking each one against `valid_proof`
-        in an effort to find a number that is a valid proof
-        :return: A valid proof for the provided block
-        """
-        block_string = json.dumps(self.last_block, sort_keys=True)
-        proof = 0
-        while not self.valid_proof(block_string, proof):
-            proof += 1
-        return proof
-
     @staticmethod
     def valid_proof(block_string, proof):
         """
-        Validates the Proof:  Does hash(block_string, proof) contain 3
+        Validates the Proof:  Does hash(block_string, proof) contain 6
         leading zeroes?  Return true if the proof is valid
         :param block_string: <string> The stringified block to use to
         check in combination with `proof`
@@ -118,7 +104,7 @@ class Blockchain(object):
         """
         guess = f"{block_string}{proof}".encode()
         guess_hash = hashlib.sha256(guess).hexdigest()
-        return guess_hash[:4] == "0000"
+        return guess_hash[:6] == "000000"
 
 
 # Instantiate our Node
@@ -131,24 +117,42 @@ node_identifier = str(uuid4()).replace('-', '')
 blockchain = Blockchain()
 
 
-@app.route('/mine', methods=['GET'])
+@app.route('/mine', methods=['POST'])
 def mine():
     # Run the proof of work algorithm to get the next proof
-    proof = blockchain.proof_of_work()
+    # proof = blockchain.proof_of_work()
 
-    # Forge the new Block by adding it to the chain with the proof
-    previous_hash = blockchain.hash(blockchain.last_block)
-    block = blockchain.new_block(proof, previous_hash)
+    # TODO: GET PROOF FROM CLIENT
+    # data is a dictionary with the POST variables
+    data = request.get_json()
 
-    response = {
-        'message': "New Block Forged",
-        'index': block['index'],
-        'transactions': block['transactions'],
-        'proof': block['proof'],
-        'previous_hash': block['previous_hash'],
-    }
+    # Check that 'proof', and 'id' are present
+    if 'proof' not in data or 'id' not in data:
+        response = {'message': 'Must contain "proof" and "id"'}
+        return jsonify(response), 400
 
-    return jsonify(response), 200
+    proof = data['proof']
+
+    # Determine if the proof is valid
+    last_block = blockchain.last_block
+    last_block_string = json.dumps(last_block, sort_keys=True)
+
+    if blockchain.valid_proof(last_block_string, proof):
+        # Forge the new Block by adding it to the chain with the proof
+        previous_hash = blockchain.hash(last_block)
+        block = blockchain.new_block(proof, previous_hash)
+
+        response = {
+            'message': "New Block Forged",
+            'index': block['index'],
+            'transactions': block['transactions'],
+            'proof': block['proof'],
+            'previous_hash': block['previous_hash'],
+        }
+        return jsonify(response), 200
+    else:
+        response = {'message': 'Invalid proof'}
+        return jsonify(response), 200
 
 
 @app.route('/chain', methods=['GET'])
@@ -160,12 +164,11 @@ def full_chain():
     return jsonify(response), 200
 
 
-@app.route("/last")
-def last_block():
-    # grabs the last chain that was found
-    response = blockchain.last_block
-
-    # returns a response in the JSON format
+@app.route('/last_block', methods=['GET'])
+def get_last_block():
+    response = {
+        'last_block': blockchain.last_block
+    }
     return jsonify(response), 200
 
 
