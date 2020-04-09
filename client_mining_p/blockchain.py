@@ -53,6 +53,21 @@ class Blockchain(object):
         # Return the new block
         return block
 
+    def new_transaction(self, sender, recipient, amount):
+        """
+        Creates a new transaction to go into the next mined Block
+        :param sender: <str> Address of the Recipient
+        :param recipient: <str> Address of the Recipient
+        :param amount: <int> Amount
+        :return: <int> The index of the Block that will hold this transaction
+        """
+        self.current_transactions.append({
+            'sender': sender,
+            'recipient': recipient,
+            'amount': amount
+        })
+        return self.last_block['index'] + 1
+
     def hash(self, block):
         """
         Creates a SHA-256 hash of a Block
@@ -138,6 +153,9 @@ def mine():
     last_block_string = json.dumps(last_block, sort_keys=True)
 
     if blockchain.valid_proof(last_block_string, proof):
+        blockchain.new_transaction(
+            sender="0", recipient=data["id"].strip(), amount=1)
+
         # Forge the new Block by adding it to the chain with the proof
         previous_hash = blockchain.hash(last_block)
         block = blockchain.new_block(proof, previous_hash)
@@ -172,6 +190,22 @@ def get_last_block():
     return jsonify(response), 200
 
 
+@app.route('/transactions/new', methods=['POST'])
+def new_transaction():
+    values = request.get_json()
+
+    required = ['sender', 'recipient', 'amount']
+    if not all(k in values for k in required):
+        return 'Missing Values', 400
+
+    index = blockchain.new_transaction(values["sender"],
+                                       values["recipient"],
+                                       values["amount"])
+
+    response = {'message': f"Transaction will be added to Block {index}"}
+    return jsonify(response), 200
+
+
 # Run the program on port 5000
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=5000)
+    app.run(host='0.0.0.0', port=5000)
